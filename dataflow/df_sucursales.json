@@ -1,0 +1,93 @@
+{
+	"name": "df_sucursales",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "sucursales_csv",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "sql_sucursales",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "split1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          sucursal_id as string,",
+				"          restaurante_id as string,",
+				"          nombre_sucursal as string,",
+				"          ciudad as string,",
+				"          zona as string,",
+				"          direccion as string,",
+				"          capacidad_mesas as string,",
+				"          tiene_delivery as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 derive(ciudad = initCap(trim(ciudad)),",
+				"          zona = initCap(trim(zona)),",
+				"          restaurante_id = trim(restaurante_id),",
+				"          direccion = trim(direccion),",
+				"          capacidad_mesas = toInteger(capacidad_mesas),",
+				"          tiene_delivery = iif(tiene_delivery == 'Sí' || tiene_delivery == 'Si' || tiene_delivery == '1', true(), false()),",
+				"          formato = toString(null()),",
+				"          {fecha_apertura } = toDate(null())) ~> derivedColumn1",
+				"derivedColumn1 split(isNull(sucursal_id) || isNull(nombre_sucursal) || isNull(ciudad) || (!isNull(capacidad_mesas) && capacidad_mesas < 0) ,",
+				"     disjoint: false) ~> split1@(rechazados, validados)",
+				"split1@validados sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          sucursal_id as string,",
+				"          nombre_sucursal as string,",
+				"          ciudad as string,",
+				"          zona as string,",
+				"          formato as string,",
+				"          fecha_apertura as date,",
+				"          restaurante_id as string,",
+				"          direccion as string,",
+				"          capacidad_mesas as integer,",
+				"          tiene_delivery as boolean",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          sucursal_id,",
+				"          nombre_sucursal,",
+				"          ciudad,",
+				"          zona,",
+				"          formato,",
+				"          fecha_apertura = {fecha_apertura },",
+				"          restaurante_id,",
+				"          direccion,",
+				"          capacidad_mesas,",
+				"          tiene_delivery",
+				"     )) ~> sink1"
+			]
+		}
+	}
+}

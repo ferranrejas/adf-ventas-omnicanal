@@ -1,0 +1,108 @@
+{
+	"name": "df_ventas",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "pedidos_csv",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "sql_ventas",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "split1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          pedido_id as string,",
+				"          fecha_pedido as string,",
+				"          hora_pedido as string,",
+				"          cliente_id as string,",
+				"          sucursal_id as string,",
+				"          canal as string,",
+				"          tipo_servicio as string,",
+				"          estado_pedido as string,",
+				"          promocion_id as string,",
+				"          subtotal as string,",
+				"          costo_delivery as string,",
+				"          descuento as string,",
+				"          impuesto as string,",
+				"          total_pedido as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 derive(canal = iif(canal == 'APP', 'Aplicación', trim(canal)),",
+				"          fecha_pedido = toDate(fecha_pedido, 'yyyy-MM-dd'),",
+				"          hora_pedido = trim(toString(hora_pedido)),",
+				"          tipo_servicio = trim(tipo_servicio),",
+				"          costo_delivery = toDecimal(costo_delivery, 12, 2),",
+				"          descuento = toDecimal(descuento, 12, 2),",
+				"          impuesto = toDecimal(impuesto, 12, 2)) ~> derivedColumn1",
+				"derivedColumn1 split(isNull(pedido_id),",
+				"     disjoint: false) ~> split1@(rechazados, validados)",
+				"split1@validados sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          venta_id as string,",
+				"          fecha_venta as date,",
+				"          cliente_id as string,",
+				"          sucursal_id as string,",
+				"          canal as string,",
+				"          medio_pago as string,",
+				"          promocion_id as string,",
+				"          estado_venta as string,",
+				"          total_venta as decimal(12,2),",
+				"          hora_pedido as timestamp,",
+				"          tipo_servicio as string,",
+				"          subtotal as decimal(12,2),",
+				"          costo_delivery as decimal(12,2),",
+				"          descuento as decimal(12,2),",
+				"          impuesto as decimal(12,2)",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          venta_id = pedido_id,",
+				"          fecha_venta = fecha_pedido,",
+				"          cliente_id,",
+				"          sucursal_id,",
+				"          canal,",
+				"          medio_pago = tipo_servicio,",
+				"          promocion_id,",
+				"          estado_venta = estado_pedido,",
+				"          total_venta = total_pedido,",
+				"          hora_pedido,",
+				"          tipo_servicio,",
+				"          subtotal = total_pedido,",
+				"          costo_delivery,",
+				"          descuento,",
+				"          impuesto",
+				"     )) ~> sink1"
+			]
+		}
+	}
+}

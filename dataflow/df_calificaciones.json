@@ -1,0 +1,78 @@
+{
+	"name": "df_calificaciones",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "calificaciones_csv",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "sql_calificaciones",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "split1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          calificacion_id as string,",
+				"          pedido_id as string,",
+				"          cliente_id as string,",
+				"          fecha_calificacion as string,",
+				"          puntuacion as string,",
+				"          comentario as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 derive(fecha_calificacion = toDate(fecha_calificacion, 'yyyy-MM-dd'),",
+				"          puntuacion = toInteger(puntuacion),",
+				"          comentario = trim(comentario)) ~> derivedColumn1",
+				"derivedColumn1 split(isNull(calificacion_id) || puntuacion < 1 || puntuacion > 5,",
+				"     disjoint: false) ~> split1@(rechazados, validados)",
+				"split1@validados sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          calificacion_id as string,",
+				"          venta_id as string,",
+				"          cliente_id as string,",
+				"          fecha_calificacion as date,",
+				"          puntuacion as integer,",
+				"          comentario as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
+				"     mapColumn(",
+				"          calificacion_id,",
+				"          venta_id = pedido_id,",
+				"          cliente_id,",
+				"          fecha_calificacion,",
+				"          puntuacion,",
+				"          comentario",
+				"     )) ~> sink1"
+			]
+		}
+	}
+}

@@ -1,0 +1,61 @@
+{
+	"name": "df_pagos",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "pagos_csv",
+						"type": "DatasetReference"
+					},
+					"name": "source1"
+				}
+			],
+			"sinks": [
+				{
+					"name": "sink1"
+				}
+			],
+			"transformations": [
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "split1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          pago_id as string,",
+				"          pedido_id as string,",
+				"          fecha_pago as string,",
+				"          metodo_pago as string,",
+				"          estado_pago as string,",
+				"          monto_pagado as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> source1",
+				"source1 derive(fecha_pago = toDate(fecha_pago, 'yyyy-MM-dd'),",
+				"          metodo_pago = iif(metodo_pago == 'Wallet', 'Billetera móvil', trim(metodo_pago)),",
+				"          estado_pago = trim(estado_pago),",
+				"          monto_pagado = toDecimal(monto_pagado, 12, 2)) ~> derivedColumn1",
+				"derivedColumn1 split(isNull(pago_id) ,",
+				"     disjoint: false) ~> split1@(rechazados, validados)",
+				"split1@validados sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     mapColumn(",
+				"          pago_id,",
+				"          pedido_id,",
+				"          fecha_pago,",
+				"          metodo_pago,",
+				"          estado_pago,",
+				"          monto_pagado",
+				"     )) ~> sink1"
+			]
+		}
+	}
+}
