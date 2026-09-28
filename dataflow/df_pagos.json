@@ -14,6 +14,10 @@
 			],
 			"sinks": [
 				{
+					"dataset": {
+						"referenceName": "sql_pagos",
+						"type": "DatasetReference"
+					},
 					"name": "sink1"
 				}
 			],
@@ -45,8 +49,22 @@
 				"     disjoint: false) ~> split1@(rechazados, validados)",
 				"split1@validados sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
+				"     input(",
+				"          pago_id as string,",
+				"          venta_id as string,",
+				"          fecha_pago as date,",
+				"          metodo_pago as string,",
+				"          estado_pago as string,",
+				"          monto_pagado as decimal(12,2)",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError',",
 				"     mapColumn(",
 				"          pago_id,",
 				"          pedido_id,",
